@@ -1,0 +1,380 @@
+HTML<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive WebGIS Navigation Dashboard - Islamabad Parks</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+  <style>
+    /* Reset & Base Layout */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #f4f6f9;
+    }
+
+    /* Top Header Bar */
+    header {
+      background-color: #1b4332;
+      color: #ffffff;
+      padding: 15px 20px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* Main Container (Sidebars + Map) */
+    .dashboard-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 60px);
+    }
+
+    /* Left Sidebar - Locations */
+    .sidebar-left {
+      width: 280px;
+      background-color: #ffffff;
+      border-right: 1px solid #e0e0e0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+      overflow-y: auto;
+    }
+
+    .sidebar-left h2, .sidebar-right h2 {
+      font-size: 1.1rem;
+      color: #2d6a4f;
+      border-bottom: 2px solid #52b788;
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .location-card {
+      background-color: #f8f9fa;
+      border: 1px solid #dcdcdc;
+      border-left: 4px solid #2d6a4f;
+      padding: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .location-card:hover {
+      background-color: #e8f5e9;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .location-card h3 {
+      font-size: 0.95rem;
+      color: #1b4332;
+      margin-bottom: 4px;
+    }
+
+    .location-card p {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .btn-current-loc {
+      background-color: #2d6a4f;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+      margin-top: 5px;
+    }
+
+    .btn-current-loc:hover {
+      background-color: #1b4332;
+    }
+
+    /* Center Map Box */
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    /* Right Sidebar - Student Profile & Route Info */
+    .sidebar-right {
+      width: 260px;
+      background-color: #ffffff;
+      border-left: 1px solid #e0e0e0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+      overflow-y: auto;
+    }
+
+    .profile-card {
+      background-color: #f1f8f5;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #b7e4c7;
+    }
+
+    .profile-field {
+      margin-bottom: 10px;
+    }
+
+    .profile-field span {
+      display: block;
+      font-size: 0.75rem;
+      color: #555;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+
+    .profile-field p {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1b4332;
+    }
+
+    /* Route Information Panel */
+    .route-info-box {
+      background-color: #ffffff;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      padding: 12px;
+      display: none;
+    }
+
+    .route-info-box h3 {
+      font-size: 0.9rem;
+      color: #1b4332;
+      margin-bottom: 8px;
+    }
+
+    .route-stat {
+      font-size: 0.85rem;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .route-stat strong {
+      color: #2d6a4f;
+    }
+
+    /* Hide Leaflet Routing Default Text Control Panel */
+    .leaflet-routing-container {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dashboard Header -->
+  <header>
+    <h1>WebGIS Navigation Dashboard - Islamabad Parks</h1>
+  </header>
+
+  <!-- Main Body Container -->
+  <div class="dashboard-container">
+
+    <!-- Left Sidebar: Selectable Locations -->
+    <div class="sidebar-left">
+      <h2>Parks & Locations</h2>
+      
+      <button class="btn-current-loc" onclick="locateUser()">📍 Locate My Position</button>
+      
+      <!-- LOCATION 1 -->
+      <div class="location-card" onclick="calculateRoute(33.5901, 73.0864, 'Ayub National Park')">
+        <h3>1. Ayub National Park</h3>
+        <p>Historic Park & Recreational Area</p>
+      </div>
+
+      <!-- LOCATION 2 -->
+      <div class="location-card" onclick="calculateRoute(33.7020, 73.0132, 'Fatima Jinnah Park (F-9)')">
+        <h3>2. F-9 Park (Fatima Jinnah)</h3>
+        <p>Largest Public Park in Islamabad</p>
+      </div>
+
+      <!-- LOCATION 3 -->
+      <div class="location-card" onclick="calculateRoute(33.6894, 73.0805, 'Lake View Park')">
+        <h3>3. Lake View Park</h3>
+        <p>Rawal Lake Recreational Spot</p>
+      </div>
+
+      <!-- LOCATION 4 -->
+      <div class="location-card" onclick="calculateRoute(33.6922, 73.0754, 'Shakarparian Park')">
+        <h3>4. Shakarparian Park</h3>
+        <p>Hilltop Garden & Viewpoint</p>
+      </div>
+    </div>
+
+    <!-- Center: Leaflet OpenStreetMap Container -->
+    <div id="map"></div>
+
+    <!-- Right Sidebar: Student Details & Route Info -->
+    <div class="sidebar-right">
+      <h2>Student Profile</h2>
+      
+      <div class="profile-card">
+        <!-- ==================================================== -->
+        <!-- EDIT YOUR DETAILS HERE -->
+        <!-- ==================================================== -->
+        <div class="profile-field">
+          <span>Student Name</span>
+          <p>Fareeha Ali</p>
+        </div>
+        <div class="profile-field">
+          <span>ARID Number</span>
+          <p>24-ARID-2207</p>
+        </div>
+        <div class="profile-field">
+          <span>Course / Lab</span>
+          <p>WebGIS Development - Lab 03</p>
+        </div>
+        <div class="profile-field">
+          <span>Instructor</span>
+          <p>Lecturer: Sir,Jaffar Waqas</p>
+        </div>
+      </div>
+
+      <!-- Live Route Information Box -->
+      <div id="route-info" class="route-info-box">
+        <h3>Route Summary</h3>
+        <p class="route-stat">Destination: <strong id="dest-name">-</strong></p>
+        <p class="route-stat">Distance: <strong id="route-distance">-</strong></p>
+        <p class="route-stat">Est. Time: <strong id="route-time">-</strong></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine JS -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+  <script>
+    // 1. Initialize Map Centered on Islamabad
+    var map = L.map('map').setView([33.6844, 73.0479], 12);
+
+    // 2. Add OpenStreetMap Tile Layer (Fallback to Esri if running local file://)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Global Variables for State Management
+    var userLocation = null;
+    var userMarker = null;
+    var routingControl = null;
+
+    // Defined Locations Array (Islamabad Parks)
+    var locations = [
+      { name: "Ayub National Park", lat: 33.5901, lng: 73.0864 },
+      { name: "Fatima Jinnah Park (F-9)", lat: 33.7020, lng: 73.0132 },
+      { name: "Lake View Park", lat: 33.6894, lng: 73.0805 },
+      { name: "Shakarparian Park", lat: 33.6922, lng: 73.0754 }
+    ];
+
+    // Add Static Markers for Default Display
+    locations.forEach(function(loc) {
+      L.marker([loc.lat, loc.lng])
+        .addTo(map)
+        .bindPopup("<b>" + loc.name + "</b>");
+    });
+
+    // 3. Browser Geolocation Feature
+    function locateUser() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          userLocation = [position.coords.latitude, position.coords.longitude];
+          
+          if (userMarker) {
+            map.removeLayer(userMarker);
+          }
+
+          userMarker = L.marker(userLocation, {
+            title: "Your Current Location"
+          }).addTo(map).bindPopup("<b>Your Current Location</b>").openPopup();
+
+          map.setView(userLocation, 12);
+        }, function(error) {
+          alert("Geolocation failed: " + error.message + ". Defaulting to Islamabad Center.");
+          userLocation = [33.6844, 73.0479]; // Fallback coordinates
+        });
+      } else {
+        alert("Browser does not support geolocation.");
+        userLocation = [33.6844, 73.0479];
+      }
+    }
+
+    // Auto-locate user on dashboard startup
+    locateUser();
+
+    // 4. Calculate & Display Route via OSRM Routing API
+    function calculateRoute(destLat, destLng, destName) {
+      if (!userLocation) {
+        alert("Detecting your location... Please try again in 2 seconds.");
+        locateUser();
+        return;
+      }
+
+      // Remove existing route if present
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+
+      // Initialize Routing Machine
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(userLocation[0], userLocation[1]),
+          L.latLng(destLat, destLng)
+        ],
+        lineOptions: {
+          styles: [{ color: '#1b4332', weight: 5, opacity: 0.8 }]
+        },
+        createMarker: function() { return null; },
+        addWaypoints: false,
+        routeWhileDragging: false
+      }).addTo(map);
+
+      // Extract Route Metadata (Distance & Travel Time)
+      routingControl.on('routesfound', function(e) {
+        var routes = e.routes;
+        var summary = routes[0].summary;
+        
+        var distanceKm = (summary.totalDistance / 1000).toFixed(2);
+        var timeMin = Math.round(summary.totalTime / 60);
+
+        // Update Right Sidebar Information Panel
+        document.getElementById('dest-name').innerText = destName;
+        document.getElementById('route-distance').innerText = distanceKm + " km";
+        document.getElementById('route-time').innerText = timeMin + " mins";
+        document.getElementById('route-info').style.display = 'block';
+      });
+    }
+  </script>
+</body>
+</html>
